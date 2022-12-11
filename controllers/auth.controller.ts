@@ -5,7 +5,7 @@ import axios from 'axios';
 import querystring from 'querystring';
 import { SpotifyTokenResponse } from "../types/spotify";
 
-const SCOPES = `user-read-playback-position user-modify-playback-state user-read-playback-state user-read-email`;
+const SCOPES = `streaming user-read-playback-position user-modify-playback-state user-read-playback-state user-read-email`;
 
 const login = ( request : Request, response : Response ) => {
 
@@ -40,11 +40,11 @@ const spotifyCallback = async ( request : Request, response : Response ) => {
       }
     });
 
-    if ( tokenResponse.status != 200 ) return response.send({ error: 'Error' }); 
+    if ( tokenResponse.status != 200 ) return response.send(JSON.stringify({ error: 'Error' })); 
 
-    response.cookie('token', tokenResponse.refresh_token);
+    response.cookie('token', tokenResponse.data.refresh_token);
 
-    response.send(JSON.stringify({ token: tokenResponse.access_token }));
+    response.send(JSON.stringify({ token: tokenResponse.data.access_token }));
 
   }
 
