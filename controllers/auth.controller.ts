@@ -25,10 +25,10 @@ const login = ( request : Request, response : Response ) => {
 const spotifyCallback = async ( request : Request, response : Response ) => {
 
   var code = request.query.code || null;
-  var state = request.query.state || null;
-
+  var state = request.query.state || null;  
+  
   if (state === null) {
-    
+
     response.send(JSON.stringify({ error: 'state_mismatch' }));
   
   } else {
@@ -37,8 +37,9 @@ const spotifyCallback = async ( request : Request, response : Response ) => {
       headers: { 
         'Authorization': `Basic ${ Buffer.from(`${ process.env.CLIENT_ID + ':' + process.env.CLIENT_SECRET }`).toString('base64') }`,
         'Content-Type': 'application/x-www-form-urlencoded'
-      }
-    });
+      },
+      timeout: 10000
+    });   
 
     if ( tokenResponse.status != 200 ) return response.send(JSON.stringify({ error: 'Error' })); 
 
@@ -50,26 +51,33 @@ const spotifyCallback = async ( request : Request, response : Response ) => {
 
 };
 
-const refreshSpotifyToken = async ( request : Request, response : Response ) => {
+const refreshSpotifyToken = async ( request : Request, response : Response ) => {  
 
-  const refresh_token = String(request.query.refresh_token) || '';
+  if ( !request.cookies.token ) return response.send(JSON.stringify({ error: 1 }));
 
-  const refreshTokenResponse = await axios.post('https://accounts.spotify.com/api/token', {
-    headers: { 
-      'Authorization': `Basic ${ Buffer.from(`${ process.env.CLIENT_ID + ':' + process.env.CLIENT_SECRET }`).toString('base64') }`,
-      'Content-Type': 'application/x-www-form-urlencoded'
-    },
-    data: `grant_type=${ encodeURIComponent("refresh_token") }&refresh_token=${ encodeURIComponent( refresh_token ) }`,
-    json: true,
-  });
+  const refresh_token = String(request.cookies.token) || '';
+
+  const refreshTokenResponse = await axios.post('https://accounts.spotify.com/api/token', 
+    querystring.stringify({
+      grant_type: 'refresh_token',
+      refresh_token: refresh_token,
+    }),
+    {
+      headers: { 
+        'Authorization': `Basic ${ Buffer.from(`${ process.env.CLIENT_ID + ':' + process.env.CLIENT_SECRET }`).toString('base64') }`,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
+    }
+  );
 
   if ( refreshTokenResponse && refreshTokenResponse.status === 200) {
 
-    const access_token = refreshTokenResponse.data.access_token;
+    const { expires_in, access_token } = refreshTokenResponse.data;
     
-    response.send({
-      'access_token': access_token
-    });
+    response.send(JSON.stringify({
+      'access_token': access_token,
+      'expiresIn': expires_in
+    }));
 
   }
 
